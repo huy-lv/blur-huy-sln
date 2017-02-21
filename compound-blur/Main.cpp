@@ -428,6 +428,8 @@ void compoundBlurCanvasRGBA(Mat src, Mat &dst, int topx, int topy, int w, int h,
 	renderCompoundBlurRGBA(src, dst, radiusData, w, h, minRadius, increaseFactor, blurLevels);
 	//context.putImageData(imageData, top_x, top_y);
 }
+
+//this function was wrote by Mario Klingemann in http://www.quasimondo.com/CompoundBlurForCanvas/CompoundBlurDemo.html
 void compoundBlurCanvasRGB(Mat src, Mat &dst, int topx, int topy, int width, int height, Mat radiusData, float radius, float increaseFactor, int blurLevels) {
 	int x, y, i, p, yp, yi, yw, r_sum, g_sum, b_sum,
 		r_out_sum, g_out_sum, b_out_sum,
