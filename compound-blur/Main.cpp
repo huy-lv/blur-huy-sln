@@ -7,7 +7,7 @@ using namespace cv;
 Mat mat1, mat2, mat3;
 int *pixels1;
 string w1 = "w1", w2 = "w2";
-int dotx = 300, doty = 200;
+int dotx = 300, doty = 200, type = 0;
 int distance1, distance2;
 int maxBlur = 31, w, h;
 Mat rot_mat;
@@ -131,8 +131,6 @@ Mat getLinearGradientMap(int width, int height, int centerX, int centerY, int d1
 	finalMat = translateMat*rotateMat;
 	finalMat.pop_back();
 	warpAffine(m1, m2, finalMat, m2.size());
-
-
 	return m2;
 }
 void renderCompoundBlurRGBA(Mat src, Mat &dst, Mat radiusData, int width, int height, float radius, float increaseFactor, int blurLevels) {
@@ -424,9 +422,27 @@ void renderCompoundBlurRGBA(Mat src, Mat &dst, Mat radiusData, int width, int he
 	////////////////////////////
 	arrayToMat(imagePixels, dst);
 }
-void compoundBlurCanvasRGBA(Mat src, Mat &dst, int topx, int topy, int w, int h, Mat radiusData, float minRadius, float increaseFactor, int blurLevels) {
-	renderCompoundBlurRGBA(src, dst, radiusData, w, h, minRadius, increaseFactor, blurLevels);
-	//context.putImageData(imageData, top_x, top_y);
+
+Mat getCircleGradientMap(int width,int height,int centerX, int centerY, int r1, int r2) {
+	Mat m2(height, width, CV_8UC1,Scalar(255));
+	float stepRadius = (float)255 / r2;
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			int a = centerX - x;
+			int b = centerY - y;
+			int distance = round(sqrt(a*a + b*b));
+			
+			if (distance < r1) {
+				m2.at<uchar>(y, x) = saturate_cast<uchar>(0) ;
+			}else if(distance>r1+r2){
+				continue;
+			}else{
+				float v = (distance - r1)*stepRadius;
+ 				m2.at<uchar>(y, x) = saturate_cast<uchar>(v);
+			}
+		}
+	}
+	return m2;
 }
 
 //this function was wrote by Mario Klingemann in http://www.quasimondo.com/CompoundBlurForCanvas/CompoundBlurDemo.html
@@ -675,17 +691,6 @@ void compoundBlurCanvasRGB(Mat src, Mat &dst, int topx, int topy, int width, int
 	////////////////////
 	arrayToMat(imagePixels, dst);
 }
-void compoundBlurImage(Mat src, Mat &dst, Mat radiusData, float minRadius, float increaseFactor, int blurLevels, bool blurAlphaChannel)
-{
-	int w = src.cols;
-	int h = src.rows;
-
-	CV_Assert(minRadius > 0 && increaseFactor != 0);
-	if (src.type() == CV_8UC4)
-		compoundBlurCanvasRGBA(src, dst, 0, 0, w, h, radiusData, minRadius, increaseFactor, blurLevels);
-	else if (src.type() == CV_8UC3)
-		compoundBlurCanvasRGB(src, dst, 0, 0, w, h, radiusData, minRadius, increaseFactor, blurLevels);
-}
 float calculateStartRadius(int blurRadius) {
 	steps = 2;
 	radiusFactor = 1.5;
@@ -698,24 +703,26 @@ float calculateStartRadius(int blurRadius) {
 }
 void onChangeAngle(int value, void* ptr) {
 	angle = value;
-	gradientData = getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle);
+	if (type == 0) {
+		gradientData = getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle);
+		imshow(w1, gradientData);
+		compoundBlurCanvasRGB(mat1, mat2, 0, 0, w, h, gradientData, startRadius, radiusFactor, steps);
+		imshow(w2, mat2);
+	}
+}
+void redraw() {
+	gradientData = type == 0 ? getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle) : getCircleGradientMap(w, h, centerx, centery, distance1, distance2);
 	imshow(w1, gradientData);
 	compoundBlurCanvasRGB(mat1, mat2, 0, 0, w, h, gradientData, startRadius, radiusFactor, steps);
 	imshow(w2, mat2);
 }
 void onChangeX(int value, void* ptr) {
 	centerx = value;
-	gradientData = getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle);
-	imshow(w1, gradientData);
-	compoundBlurCanvasRGB(mat1, mat2, 0, 0, w, h, gradientData, startRadius, radiusFactor, steps);
-	imshow(w2, mat2);
+	redraw();
 }
 void onChangeY(int value, void* ptr) {
 	centery = value;
-	gradientData = getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle);
-	imshow(w1, gradientData);
-	compoundBlurCanvasRGB(mat1, mat2, 0, 0, w, h, gradientData, startRadius, radiusFactor, steps);
-	imshow(w2, mat2);
+	redraw();
 }
 void onChangeRadius(int value, void* ptr) {
 	startRadius = calculateStartRadius(value);
@@ -724,18 +731,17 @@ void onChangeRadius(int value, void* ptr) {
 }
 void onChangeDistance1(int value, void* ptr) {
 	distance1 = value;
-	gradientData = getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle);
-	compoundBlurCanvasRGB(mat1, mat2, 0, 0, w, h, gradientData, startRadius, radiusFactor, steps);
-	imshow(w1, gradientData);
-	imshow(w2, mat2);
+	redraw();
 }
 void onChangeDistance2(int value, void* ptr) {
 	distance2 = value;
-	gradientData = getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle);
-	imshow(w1, gradientData);
-	compoundBlurCanvasRGB(mat1, mat2, 0, 0, w, h, gradientData, startRadius, radiusFactor, steps);
-	imshow(w2, mat2);
+	redraw();
 }
+void onTypeChange(int value, void* ptr) {
+	type = value;
+	redraw();
+}
+
 int main() {
 	mat1 = imread("s1.jpg", IMREAD_COLOR);
 	mat1.copyTo(mat2);
@@ -747,17 +753,21 @@ int main() {
 	startRadius = calculateStartRadius(blurRadius);
 
 	gradientData = getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle);
+	//gradientData = getCircleGradientMap(w, h, centerx, centery, distance1, distance2);
 	compoundBlurCanvasRGB(mat1, mat2, 0, 0, w, h, gradientData, startRadius, radiusFactor, steps);
+
+
 
 	namedWindow(w1, WINDOW_AUTOSIZE);
 	namedWindow(w2, WINDOW_AUTOSIZE);
+	createTrackbar("type", w1, 0, 1, onTypeChange);
 	createTrackbar("rot", w1, 0, 180, onChangeAngle);
 	createTrackbar("x", w1, 0, w, onChangeX);
 	createTrackbar("y", w1, 0, h, onChangeY);
 	createTrackbar("radius", w2, 0, 100, onChangeRadius);
 	createTrackbar("distance1", w2, 0, 200, onChangeDistance1);
 	createTrackbar("distance2", w2, 0, 200, onChangeDistance2);
-	imshow(w1, getLinearGradientMap(w, h, centerx, centery, distance1, distance2, angle));
+	imshow(w1, gradientData);
 	imshow(w2, mat2);
 	waitKey(0);
 }
