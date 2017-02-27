@@ -1,8 +1,8 @@
 # blur-huy-sln
 This is a Visual Studio project implements the Compound Blur algorithm using OpenCV/C++.
-I think this should be call Gradient Blur :p
+I think this should be call Gradient Blur :p 
 This is a Javascript demo: http://www.quasimondo.com/CompoundBlurForCanvas/CompoundBlurDemo.html
-
+Further more, i implement circle blur function.
 
 ##How to build
 Clone project and open with Visual studio 2015
